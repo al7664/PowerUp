@@ -1,0 +1,60 @@
+/* GENERAL PAGE LAYOUT */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #E60012;
+  color: white;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  height: 100vh;
+  text-align: center;
+}
+
+/* LOGO */
+#logo {
+  width: 80px;
+  margin-bottom: 20px;
+}
+
+/* TITLE */
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+/* MOVEMENT COUNT */
+#count {
+  font-size: 4rem;
+  font-weight: bold;
+  margin: 10px 0;
+  transition: transform 0.15s ease;
+}
+
+/* BUTTON */
+button {
+  padding: 12px 28px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  background: white;
+  color: #E60012;
+  font-weight: bold;
+  transition: 0.2s ease;
+  margin: 5px;
+  border-radius: 4px;
+}
+
+button:hover {
+  background: #f7f7f7;
+}
+
+/* FOOTER NOTE */
+.note {
+  margin-top: 15px;
+  font-size: 0.95rem;
+}
