@@ -60,39 +60,35 @@ function handleMovementMusic() {
 // 3) START MUSIC
 // ----------------------------------------------------
 function startMusic() {
-    console.log("Starting music from beginning...");
+    if (!audioEnabled) {
+        console.log("❌ Audio not enabled yet");
+        return;
+    }
+    
+    console.log("🎵 Starting music from beginning...");
     
     sound.currentTime = 0;
     sound.volume = 0.7;
     
-    const playPromise = sound.play();
-    
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
-            console.log("Music started successfully!");
-            isPlaying = true;
-            audioEnabled = true;
-        }).catch(error => {
-            console.log("Music failed - need user interaction first");
-        });
-    }
+    sound.play().then(() => {
+        console.log("✅ Music started successfully!");
+        isPlaying = true;
+    }).catch(error => {
+        console.log("❌ Music play failed:", error);
+    });
 }
 
 // ----------------------------------------------------
 // 4) RESUME MUSIC (from current position)
 // ----------------------------------------------------
 function resumeMusic() {
-    console.log("Resuming music...");
+    console.log("▶️ Resuming music...");
     
-    const playPromise = sound.play();
-    
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
-            console.log("Music resumed!");
-        }).catch(error => {
-            console.log("Resume failed");
-        });
-    }
+    sound.play().then(() => {
+        console.log("✅ Music resumed!");
+    }).catch(error => {
+        console.log("❌ Resume failed");
+    });
 }
 
 // ----------------------------------------------------
@@ -100,7 +96,7 @@ function resumeMusic() {
 // ----------------------------------------------------
 function pauseMusic() {
     if (isPlaying && !sound.paused) {
-        console.log("Pausing music (no movement detected)");
+        console.log("⏸️ Pausing music (no movement detected)");
         sound.pause();
     }
 }
@@ -116,7 +112,7 @@ function resetMovementTimeout() {
     
     // Set new timeout to pause music
     movementTimeout = setTimeout(() => {
-        console.log("Movement timeout - pausing music");
+        console.log("⏰ Movement timeout - pausing music");
         pauseMusic();
     }, MOVEMENT_TIMEOUT);
 }
@@ -144,10 +140,10 @@ document.addEventListener("mousemove", (event) => {
 });
 
 // ----------------------------------------------------
-// 8) SIMPLE MOBILE MOTION DETECTION
+// 8) SIMPLE MOBILE SHAKE DETECTION
 // ----------------------------------------------------
 let lastShakeTime = 0;
-const SHAKE_THRESHOLD = 15; // Lower threshold for easier detection
+let lastAcceleration = { x: null, y: null, z: null };
 
 function handleDeviceMotion(event) {
     if (movementCooldown || !deviceMotionEnabled) return;
@@ -155,54 +151,67 @@ function handleDeviceMotion(event) {
     const acceleration = event.accelerationIncludingGravity;
     if (!acceleration) return;
     
-    // Get acceleration values
     const x = acceleration.x || 0;
     const y = acceleration.y || 0;
     const z = acceleration.z || 0;
     
-    // Calculate overall force
-    const force = Math.sqrt(x * x + y * y + z * z);
+    // If we don't have previous values, set them and return
+    if (lastAcceleration.x === null) {
+        lastAcceleration = { x, y, z };
+        return;
+    }
+    
+    // Calculate change in acceleration (how much device moved)
+    const deltaX = Math.abs(x - lastAcceleration.x);
+    const deltaY = Math.abs(y - lastAcceleration.y);
+    const deltaZ = Math.abs(z - lastAcceleration.z);
+    
+    // Total movement
+    const totalMovement = deltaX + deltaY + deltaZ;
     
     const currentTime = Date.now();
     
-    // Only register shake if enough time has passed
-    if (force > SHAKE_THRESHOLD && (currentTime - lastShakeTime) > 500) {
-        console.log("Shake detected! Force:", force.toFixed(2));
+    // Register movement if significant shake detected
+    if (totalMovement > 10 && (currentTime - lastShakeTime) > 400) {
+        console.log("📱 Shake detected! Movement:", totalMovement.toFixed(2));
         registerMovement();
         lastShakeTime = currentTime;
     }
+    
+    // Update last acceleration values
+    lastAcceleration = { x, y, z };
 }
 
 // ----------------------------------------------------
-// 9) ENABLE MOTION DETECTION AUTOMATICALLY
+// 9) ENABLE MOTION DETECTION
 // ----------------------------------------------------
 function enableMotionDetection() {
-    // Check if device supports motion events
     if (window.DeviceMotionEvent) {
-        // For iOS 13+, we need to request permission
+        // For iOS 13+, request permission
         if (typeof DeviceMotionEvent.requestPermission === 'function') {
             DeviceMotionEvent.requestPermission()
                 .then(permissionState => {
                     if (permissionState === 'granted') {
                         deviceMotionEnabled = true;
                         window.addEventListener('devicemotion', handleDeviceMotion);
-                        console.log("✅ Motion detection enabled (iOS)");
-                        showMobileMessage("✅ Shake detection enabled!");
-                    } else {
-                        console.log("❌ Motion permission denied");
-                        showMobileMessage("❌ Enable motion access in settings");
+                        console.log("✅ iOS Motion detection enabled");
+                        showMobileMessage("✅ Shake to move!");
                     }
                 })
-                .catch(console.error);
+                .catch(error => {
+                    console.log("❌ Motion permission error:", error);
+                    showMobileMessage("❌ Allow motion access");
+                });
         } else {
-            // Android and other devices - enable automatically
+            // Android and other devices
             deviceMotionEnabled = true;
             window.addEventListener('devicemotion', handleDeviceMotion);
-            console.log("✅ Motion detection enabled (Android/Other)");
+            console.log("✅ Android Motion detection enabled");
+            showMobileMessage("✅ Shake to move!");
         }
     } else {
         console.log("❌ Device motion not supported");
-        showMobileMessage("❌ Motion not supported on this device");
+        showMobileMessage("❌ Motion not supported");
     }
 }
 
@@ -225,29 +234,27 @@ function showMobileMessage(message) {
 }
 
 // ----------------------------------------------------
-// 11) TOUCH TO ENABLE AUDIO AND MOTION
+// 11) ENABLE AUDIO ON USER INTERACTION
 // ----------------------------------------------------
-document.addEventListener('touchstart', (event) => {
+function enableAudioOnInteraction() {
     if (!audioEnabled) {
         audioEnabled = true;
-        console.log("✅ Audio enabled via touch");
+        console.log("✅ Audio enabled");
+        
+        // On mobile, also enable motion detection when user interacts
+        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            if (!deviceMotionEnabled) {
+                enableMotionDetection();
+            }
+        }
     }
-    
-    // Enable motion detection on first touch (if not already enabled)
-    if (!deviceMotionEnabled) {
-        enableMotionDetection();
-    }
-});
+}
 
 // ----------------------------------------------------
-// 12) CLICK TO ENABLE AUDIO (DESKTOP)
+// 12) SINGLE TAP/CLICK TO ENABLE EVERYTHING
 // ----------------------------------------------------
-document.addEventListener('click', () => {
-    if (!audioEnabled) {
-        audioEnabled = true;
-        console.log("✅ Audio enabled via click");
-    }
-});
+document.addEventListener('click', enableAudioOnInteraction);
+document.addEventListener('touchstart', enableAudioOnInteraction);
 
 // ----------------------------------------------------
 // 13) RESET BUTTON
@@ -269,34 +276,28 @@ document.getElementById("resetBtn").addEventListener("click", () => {
     
     lastX = null;
     lastY = null;
+    lastAcceleration = { x: null, y: null, z: null };
     counterDisplay.style.transform = 'scale(1)';
     
-    console.log("Counter reset - music stopped and reset");
+    console.log("🔄 Counter reset");
 });
 
 // ----------------------------------------------------
 // 14) MUSIC END EVENT
 // ----------------------------------------------------
 sound.addEventListener('ended', () => {
-    console.log("Music finished playing");
+    console.log("🎵 Music finished playing");
     isPlaying = false;
 });
 
 // ----------------------------------------------------
-// 15) AUTO-DETECT MOBILE AND ENABLE MOTION
+// 15) AUTO-DETECT MOBILE
 // ----------------------------------------------------
 if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-    console.log("📱 Mobile device detected - enabling motion detection");
-    showMobileMessage("📱 Shake your phone to start!");
-    
-    // Try to enable motion detection automatically after a short delay
-    setTimeout(() => {
-        if (!deviceMotionEnabled) {
-            enableMotionDetection();
-        }
-    }, 1000);
+    console.log("📱 Mobile device detected");
+    showMobileMessage("📱 Tap screen, then shake phone!");
 }
 
-console.log("🎯 Movement Counter Loaded!");
+console.log("🚀 Movement Counter Loaded!");
 console.log("Desktop: Move mouse to start");
-console.log("Mobile: Shake device to start");
+console.log("Mobile: Tap screen, then shake phone");
