@@ -46,14 +46,14 @@ function registerMovement() {
 }
 
 // ----------------------------------------------------
-// 2) MUSIC CONTROL BASED ON MOVEMENT
+// 2) MUSIC CONTROL BASEON MOVEMENT
 // ----------------------------------------------------
 function handleMovementMusic() {
     // Start music on first movement
     if (movementCount === 1 && !isPlaying) {
         startMusic();
     }
-    // Resume music if it was paused and movement continues
+    // Resume music if paused and movement continues
     else if (isPlaying && sound.paused) {
         resumeMusic();
     }
@@ -77,14 +77,13 @@ function startMusic() {
             audioEnabled = true;
         }).catch(error => {
             console.log("❌ Music failed - need user interaction first");
-            // Set up one-time click listener to enable audio
             document.addEventListener('click', enableAudioOnce, { once: true });
         });
     }
 }
 
 // ----------------------------------------------------
-// 4) RESUME MUSIC (from current position)
+// 4) RESUME MUSIC
 // ----------------------------------------------------
 function resumeMusic() {
     console.log("▶️ Resuming music...");
@@ -114,12 +113,10 @@ function pauseMusic() {
 // 6) MOVEMENT TIMEOUT SYSTEM
 // ----------------------------------------------------
 function resetMovementTimeout() {
-    // Clear existing timeout
     if (movementTimeout) {
         clearTimeout(movementTimeout);
     }
     
-    // Set new timeout to pause music
     movementTimeout = setTimeout(() => {
         console.log("⏰ Movement timeout - pausing music");
         pauseMusic();
@@ -180,18 +177,27 @@ window.addEventListener("devicemotion", (event) => {
 });
 
 // ----------------------------------------------------
-// 9) RESET BUTTON - STOP MUSIC AND RESET EVERYTHING
+// ✅ 9) SINGLE CLICK / SINGLE TAP COUNTS AS MOVEMENT
+// ----------------------------------------------------
+document.addEventListener("click", () => {
+    registerMovement();
+});
+
+document.addEventListener("touchstart", () => {
+    registerMovement();
+});
+
+// ----------------------------------------------------
+// 10) RESET BUTTON - STOP MUSIC AND RESET EVERYTHING
 // ----------------------------------------------------
 document.getElementById("resetBtn").addEventListener("click", () => {
     movementCount = 0;
     counterDisplay.textContent = 0;
     
-    // Stop music completely
     sound.pause();
     sound.currentTime = 0;
     isPlaying = false;
     
-    // Clear movement timeout
     if (movementTimeout) {
         clearTimeout(movementTimeout);
         movementTimeout = null;
@@ -206,19 +212,18 @@ document.getElementById("resetBtn").addEventListener("click", () => {
 });
 
 // ----------------------------------------------------
-// 10) AUDIO ENABLEMENT
+// 11) AUDIO ENABLEMENT
 // ----------------------------------------------------
 function enableAudioOnce() {
     console.log("✅ Audio enabled via user interaction");
     audioEnabled = true;
-    // Try to start music if we already had movement
     if (movementCount >= 1 && !isPlaying) {
         startMusic();
     }
 }
 
 // ----------------------------------------------------
-// 11) MUSIC END EVENT
+// 12) MUSIC END EVENT
 // ----------------------------------------------------
 sound.addEventListener('ended', () => {
     console.log("🎵 Music finished playing");
@@ -226,11 +231,11 @@ sound.addEventListener('ended', () => {
 });
 
 // ----------------------------------------------------
-// 12) INITIAL AUDIO ENABLEMENT
+// 13) INITIAL AUDIO ENABLEMENT
 // ----------------------------------------------------
 document.addEventListener('click', enableAudioOnce, { once: true });
 document.addEventListener('touchstart', enableAudioOnce, { once: true });
 
 console.log("🚀 Movement Counter Loaded!");
-console.log("Move your device or mouse to start!");
+console.log("Move, tap, or click to start!");
 console.log("Music plays when moving, pauses when still");
